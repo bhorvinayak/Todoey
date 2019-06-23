@@ -13,6 +13,8 @@ class TodoListViewController: UITableViewController {
     
     var itemArray = ["Walking","Yoga","Jumping Jack"]
     
+    var defaults = UserDefaults.standard
+    
     override func viewDidLoad() {
         super.viewDidLoad()
 
@@ -21,6 +23,10 @@ class TodoListViewController: UITableViewController {
 
         // Uncomment the following line to display an Edit button in the navigation bar for this view controller.
         // self.navigationItem.rightBarButtonItem = self.editButtonItem
+        
+        if let item = defaults.array(forKey: "TodoListArray") as? [String]{
+            itemArray = item
+        }
     }
 
     // MARK: - Table view data source
@@ -61,16 +67,35 @@ class TodoListViewController: UITableViewController {
             tableView.cellForRow(at: indexPath)?.accessoryType = .checkmark
         }
         
+        
         tableView.deselectRow(at: indexPath, animated: true)
     }
     
     //MARK - Add New Item
     @IBAction func addNewItemBtnClicked(_ sender: UIBarButtonItem) {
         
-        let alert = UIAlertController(title: "Add Item Todayey", message: "", preferredStyle: .alert)
+        var textField = UITextField()
+        let alert = UIAlertController(title: "Add New Todaey Item", message: "", preferredStyle: .alert)
         
         let alertAction =  UIAlertAction(title: "Add New Item", style: .default) {(action) in
             print("Sucess")
+            
+            print("entered text :\(textField.text!)")
+            self.itemArray.append(textField.text!)
+            
+            print("Item Array \(self.itemArray)")
+            
+            self.defaults.set(self.itemArray, forKey: "TodoListArray")
+            self.tableView.reloadData()
+            
+            
+        }
+        
+        alert.addTextField { (alertTextField) in
+            
+            alertTextField.placeholder = "Create New Folder"
+            
+            textField = alertTextField
             
         }
         
