@@ -22,33 +22,10 @@ class TodoListViewController: UITableViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
 
-        
-     
         print("dataFilePath : \(dataFilePath)")
         
         loadItem()
-//        let newItem = Item()
-//        newItem.title = "Walking"
-//        itemArray.append(newItem)
-//
-//        let newItem2 = Item()
-//        newItem2.title = "Yoga"
-//        itemArray.append(newItem2)
-//
-//        let newItem3 = Item()
-//        newItem3.title = "Jumping Jack"
-//        itemArray.append(newItem3)
-        
-        // Uncomment the following line to preserve selection between presentations
-        // self.clearsSelectionOnViewWillAppear = false
 
-        // Uncomment the following line to display an Edit button in the navigation bar for this view controller.
-        // self.navigationItem.rightBarButtonItem = self.editButtonItem
-        
-        //print(itemArrayB)
-//        if let item = defaults.array(forKey: "TodoListArray") as? [Item]{
-//            itemArray = item
-//        }
     }
 
     // MARK: - Table view data source
