@@ -7,31 +7,32 @@
 //
 
 import UIKit
+import CoreData
 
 class TodoListViewController: UITableViewController {
 
     
     
     var itemArray = [Item]()
-    //var itemArray = ["Walking","Yoga","Jumping Jack","a","v","n","l","m","f","s"]
-    //var itemArrayB = ["Walking","Yoga","Jumping Jack","a","v","n","l","m","f","s","a","v","n","l","m","f","s"]
-    
-    
     var defaults = UserDefaults.standard
-    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.appendingPathComponent("Item.plist")
+    let dataFilePath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+    // UIApplication.shared.delegate is Singleton object
+    let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
+    var selectedCategory : Category?{
+        didSet{
+            loadItems()
+        }
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
 
         print("dataFilePath : \(dataFilePath)")
-        
-        loadItem()
-
+        loadItems()
     }
 
     // MARK: - Table view data source
-
     
-
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
         // #warning Incomplete implementation, return the number of rows
         
@@ -51,15 +52,7 @@ class TodoListViewController: UITableViewController {
         //value = condition ? valueIfTrue : valueIfFalse
         cell.accessoryType = item.done ? .checkmark : .none
         
-        /*Use ternery operator to optimize this code
-        if itemArray[indexPath.row].done == true{
-            cell.accessoryType = .checkmark
-            
-        }else{
-            cell.accessoryType = .none
-            
-        }
-        */
+       
         return cell
     }
     
@@ -68,38 +61,15 @@ class TodoListViewController: UITableViewController {
     override func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
         
         
+        //Delete operation
+        //context.delete(itemArray[indexPath.row])
+        //itemArray.remove(at:indexPath.row)
         
+        //Updaing operation
         //Optimize code
-        
         let item = itemArray[indexPath.row]
-        
         item.done = !item.done
-        
-        
-        /*
-         //Instead of writing below three line
-         
-         if itemArray[indexPath.row].done == false{
-         
-         self.itemArray[indexPath.row].done = true
-         
-         }else{
-         
-         self.itemArray[indexPath.row].done = false
-         }
-         
-         //Write
-         let item = itemArray[indexPath.row]
-         
-         item.done = !item.done
-         
-        
-        */
-        
-        //self.tableView.reloadData()
-        
-        self.saveItem()
-        
+        saveData()
         tableView.deselectRow(at: indexPath, animated: true)
     }
     
@@ -113,19 +83,14 @@ class TodoListViewController: UITableViewController {
             print("Sucess")
             
             print("entered text :\(textField.text!)")
-            
-            let newItem = Item()
+            let newItem = Item(context: self.context)
             newItem.title = textField.text!
+            newItem.done = false
+            newItem.parentCategory = self.selectedCategory
             self.itemArray.append(newItem)
             
             print("Item Array \(self.itemArray)")
-            
-            //self.defaults.set(self.itemArray, forKey: "TodoListArray")
-            
-            //Save Data using Encoder
-            
-            
-            self.saveItem()
+            self.saveData()
             
         }
         
@@ -143,83 +108,87 @@ class TodoListViewController: UITableViewController {
         
     }
     
-    func saveItem(){
-        let encoder = PropertyListEncoder()
+
+    //MARK:- Create Operation
+    func saveData(){
         
-        do {
+        do{
+            try context.save()
             
-            let data = try encoder.encode(itemArray)
+        }catch{
             
-            try data.write(to: dataFilePath!)
-            
-        } catch {
-            
-            print("Error in Encoding Item \(error)")
-            
+            print("Error in While Saving \(error)")
         }
-        
         self.tableView.reloadData()
     }
     
-    //Issue: latest added data not loaded
-    func loadItem(){
+    //MARK:- Read Operation
+    func loadItems(with request: NSFetchRequest<Item> = Item.fetchRequest(),predicate : NSPredicate? = nil){
         
-        if let  data = try? Data(contentsOf: dataFilePath!){
+        //let request : NSFetchRequest<Item> = Item.fetchRequest()
+        
+        let categoryPredicate = NSPredicate(format: "parentCategory.name MATCHES %@", selectedCategory!.name!)
+        
+        
+        if let additionalPredicate = predicate{
+            request.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [categoryPredicate,additionalPredicate])
+        }else{
+           request.predicate = categoryPredicate
+        }
+        
+        
+        do{
             
-            let decoder = PropertyListDecoder()
+            itemArray = try context.fetch(request)
+            
+        }catch{
+            print("Error While Fetching \(error)")
+        }
+        
+    }
+}
 
-            do {
-                itemArray = try decoder.decode([Item].self, from: data)
-            } catch {
-                print("Error decoding")
+//MARK: - Search Bar Method
+extension TodoListViewController : UISearchBarDelegate{
+    
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        
+        let request : NSFetchRequest<Item> = Item.fetchRequest()
+        
+        //cd for non-case sensetive
+        //let predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
+        
+        request.predicate = NSPredicate(format: "title CONTAINS[cd] %@", searchBar.text!)
+        
+        //let sortDescripter = NSSortDescriptor(key: "title", ascending: true)
+        
+        request.sortDescriptors = [NSSortDescriptor(key: "title", ascending: true)]
+        
+//        do{
+//
+//            itemArray = try context.fetch(request)
+//
+//        }catch{
+//            print("Error While Fetching \(error)")
+//        }
+        
+        loadItems(with: request)
+        tableView.reloadData()
+        
+        
+    }
+    
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        
+        if searchBar.text?.count == 0{
+         loadItems()
+            
+            DispatchQueue.main.async {
+                
+                searchBar.resignFirstResponder()
             }
-            
-            
         }
     }
-    /*
-    // Override to support conditional editing of the table view.
-    override func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
-        // Return false if you do not want the specified item to be editable.
-        return true
-    }
-    */
-
-    /*
-    // Override to support editing the table view.
-    override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCellEditingStyle, forRowAt indexPath: IndexPath) {
-        if editingStyle == .delete {
-            // Delete the row from the data source
-            tableView.deleteRows(at: [indexPath], with: .fade)
-        } else if editingStyle == .insert {
-            // Create a new instance of the appropriate class, insert it into the array, and add a new row to the table view
-        }    
-    }
-    */
-
-    /*
-    // Override to support rearranging the table view.
-    override func tableView(_ tableView: UITableView, moveRowAt fromIndexPath: IndexPath, to: IndexPath) {
-
-    }
-    */
-
-    /*
-    // Override to support conditional rearranging of the table view.
-    override func tableView(_ tableView: UITableView, canMoveRowAt indexPath: IndexPath) -> Bool {
-        // Return false if you do not want the item to be re-orderable.
-        return true
-    }
-    */
-
-    /*
-    // MARK: - Navigation
-
-    // In a storyboard-based application, you will often want to do a little preparation before navigation
-    override func prepare(for segue: UIStoryboardSegue, sender: Any?) {
-        // Get the new view controller using segue.destination.
-        // Pass the selected object to the new view controller.
-    }
-    */
+    
 
 }
